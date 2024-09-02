@@ -1,0 +1,80 @@
+#!/bin/bash
+
+filestores="$HOME/.filestores"
+decrypted="/tmp/decrypted"
+
+# test 1 and only key is inserted
+test_keys() {
+
+    key_details=$(fido2-token -L)
+
+    if [ -z "$key_details" ]; then
+        echo "no key inserted"
+    fi
+
+    # test for more than 1 key (fido2-token has a newline character)
+    NL='
+    '
+    case $key_details in
+      *"$NL"*) echo "please ensure only 1 yubikey is inserted!" ; exit 1 ;;
+    esac
+
+    yubikey=$(echo $key_details | awk -F: '{print $1}')
+
+}
+
+
+create_store() {
+
+    echo "create new encrypted file store"
+    read -p "enter name of file store: " filestore
+    mkdir -p $filestores/$filestore
+
+}
+
+
+init_store() {
+
+    if [ ! -f "$filestores/$filestore/gocryptfs.conf" ]; then
+        echo "initialising filestore"
+        gocryptfs -init -fido2 $yubikey $filestores/$filestore 
+    fi
+
+}
+
+
+decrypt_store() {
+
+    echo "decrypting and mounting store"
+    mkdir -p $decrypted/$filestore
+    gocryptfs -fido2 $yubikey $filestores/$filestore $decrypted/$filestore
+    ln -s $decrypted/$filestore $HOME/$filestore
+
+}
+
+
+encrypt_store() {
+
+    read -p "type q to quit: " quit
+
+    if [ $quit = "q" ]; then
+        rm $HOME/$filestore
+        fusermount -u $decrypted/$filestore
+        rmdir $decrypted/$filestore $decrypted
+    fi
+
+}
+
+main () {
+
+    echo "yubicrypt - a front end for gocryptfs and fido2 on yubicrypt"
+
+    create_store
+    test_keys
+    init_store
+    decrypt_store
+    encrypt_store
+}
+
+
+main
