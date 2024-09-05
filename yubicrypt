@@ -59,7 +59,7 @@ encrypt_store() {
 
     if [ $quit = "q" ]; then
 
-        while [ ! $(fusermount -u $decrypted/$filestore) ]
+        while [[ ! $(fusermount -u $decrypted/$filestore) ]]
         do
             read -p "close $HOME/$filestore and press any key to continue " nothing
         done
